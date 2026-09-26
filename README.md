@@ -4,6 +4,7 @@
 
 ### Intelligent, Layer-Preserving Docker Cache Optimizer & Cleanup Daemon
 
+[![CI](https://github.com/Minhaj009/PruneDocker/actions/workflows/ci.yml/badge.svg)](https://github.com/Minhaj009/PruneDocker/actions/workflows/ci.yml)
 [![Go Version](https://img.shields.io/badge/Go-1.22%2B-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://go.dev)
 [![Docker](https://img.shields.io/badge/Docker-Engine%20SDK-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Bubbletea](https://img.shields.io/badge/TUI-Bubbletea-F25D94?style=for-the-badge&logo=terminal&logoColor=white)](https://github.com/charmbracelet/bubbletea)
