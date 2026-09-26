@@ -50,7 +50,7 @@ PruneDocker understands Docker's underlying layer ancestry:
 * ✅ **Calculates a Cache-Utility Score** based on layer reference counts, build recency, and disk footprint.
 * ✅ **Strictly protects warm caches** used by recent branch builds.
 * ✅ **Atomically purges dead experiment leaves** and 64-char orphaned anonymous volumes.
-* ✅ **$0 External Cost**: Communicates directly over the local Unix socket or Windows named pipe.
+* ✅ **Zero External API Cost (\$0)**: Communicates directly over the local Unix socket or Windows named pipe.
 
 ---
 
@@ -95,11 +95,11 @@ flowchart TD
 
 PruneDocker computes the AST cache score for every intermediate leaf image:
 
-$$\text{Score} = \frac{\text{Ref\_Count} \times \text{Weight\_Recent}}{\max(\text{Size\_MB}, 0.1)}$$
+$$\text{Score} = \frac{\text{RefCount} \times \text{WeightRecent}}{\max(\text{SizeMB}, 0.1)}$$
 
-* **$\text{Ref\_Count}$**: Number of stages, images, or child layers referencing this layer.
-* **$\text{Weight\_Recent}$**: Smooth linear decay within the `--keep-recent` window (default 72h), decaying exponentially ($0.5 \times 2^{-\Delta t / t_{\text{window}}}$) for older items.
-* **$\text{Size\_MB}$**: Image footprint in megabytes (ensures large dead blobs receive lower scores and are prioritized for reclamation).
+* **`RefCount`**: Number of stages, images, or child layers referencing this layer.
+* **`WeightRecent`**: Smooth linear decay within the `--keep-recent` window (default 72h), decaying exponentially `(0.5 × 2^(-Δt / Window))` for older items.
+* **`SizeMB`**: Image footprint in megabytes (ensures large dead blobs receive lower scores and are prioritized for reclamation).
 
 ```mermaid
 flowchart TD
@@ -115,7 +115,7 @@ flowchart TD
 
     VolStart["Examine Volume Node"] --> CheckMount{"Mounted by Any<br/>Active Container?"}
     CheckMount -- Yes --> SavedVol["NAMED_VOLUME_KEPT<br/>(Protected)"]
-    CheckMount -- No --> CheckAnon{"64-Char Anonymous Hex<br/>Format (^[a-f0-9]{64}$)?"}
+    CheckMount -- No --> CheckAnon{"64-Char Anonymous Hex<br/>Format (64 hex characters)?"}
     CheckAnon -- Yes --> OrphanVol["ORPHAN_VOLUME_PRUNE<br/>(Safe Deletion Target)"]
     CheckAnon -- No --> SavedNamed["NAMED_VOLUME_KEPT<br/>(Named Volume Preserved)"]
 ```
