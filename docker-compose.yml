@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  prunedocker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: prunedocker:latest
+    container_name: prunedocker
+    restart: unless-stopped
+    volumes:
+      # Mount the host Docker Unix socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      # Prometheus metrics endpoint
+      - "9199:9199"
+    environment:
+      - TZ=UTC
+    command:
+      - daemon
+      - --max-disk-usage=80
+      - --check-interval=30m
+      - --keep-recent=72h
+      - --min-reuse=2
+      - --metrics-addr=:9199

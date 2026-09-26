@@ -1,0 +1,21 @@
+[Unit]
+Description=PruneDocker Intelligent Cache Optimizer Daemon
+Documentation=https://github.com/Minhaj009/PruneDocker
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/prunedocker daemon --max-disk-usage 80 --check-interval 30m --keep-recent 72h --min-reuse 2 --metrics-addr :9199
+Restart=always
+RestartSec=10s
+LimitNOFILE=65536
+
+# Sandboxing & Security Hardening
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

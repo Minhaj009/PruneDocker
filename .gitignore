@@ -1,0 +1,27 @@
+# Binaries and build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries and coverage reports
+*.test
+coverage.out
+coverage.html
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Go workspace
+go.work
+go.work.sum
+
+# Temporary logs
+*.log
