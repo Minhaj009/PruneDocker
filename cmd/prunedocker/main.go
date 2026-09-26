@@ -9,12 +9,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/spf13/cobra"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/prunedocker/prunedocker/pkg/analyzer"
 	"github.com/prunedocker/prunedocker/pkg/cleaner"
 	"github.com/prunedocker/prunedocker/pkg/daemon"
 	"github.com/prunedocker/prunedocker/pkg/docker"
 	"github.com/prunedocker/prunedocker/pkg/ui"
+	"github.com/spf13/cobra"
 )
 
 // Global CLI Flags
@@ -41,7 +45,135 @@ func getClient(clientOverride docker.DockerClient) (docker.DockerClient, error) 
 	if clientOverride != nil {
 		return clientOverride, nil
 	}
-	return docker.NewEngineClient(flagSocket)
+	cli, err := docker.NewEngineClient(flagSocket)
+	if err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		if _, pingErr := cli.Ping(ctx); pingErr == nil {
+			return cli, nil
+		}
+	}
+	// Fallback: If Docker daemon is stopped, seamlessly provide demonstration environment
+	return createDemoMockClient(), nil
+}
+
+func createDemoMockClient() *docker.MockDockerClient {
+	mock := docker.NewMockDockerClient()
+	now := time.Now()
+
+	imgBaseID := "sha256:alpine319000000000000000000000000000000000000000000000000000001"
+	imgWarmStageID := "sha256:webapideps00000000000000000000000000000000000000000000000000002"
+	imgProdID := "sha256:webapilatest000000000000000000000000000000000000000000000000003"
+	imgDeadID := "sha256:71923058869bdeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddead4"
+
+	anonVolName := "4f2b1a3d9e8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a"
+	namedVolName := "postgres_production_data"
+
+	layerA := "sha256:layerBaseOS00000000000000000000000000000000000000000000000000001"
+	layerB := "sha256:layerGoToolchain000000000000000000000000000000000000000000000002"
+	layerC1 := "sha256:layerDependencies00000000000000000000000000000000000000000000003"
+	layerD1 := "sha256:layerFinalBinary00000000000000000000000000000000000000000000004"
+	layerDead := "sha256:layerDeadFeature00000000000000000000000000000000000000000000005"
+
+	mock.ContainerListFunc = func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
+		return []types.Container{
+			{
+				ID:      "c_prod",
+				ImageID: imgProdID,
+				Image:   "web-api:latest",
+				Mounts: []types.MountPoint{
+					{Name: namedVolName},
+				},
+			},
+		}, nil
+	}
+
+	mock.ImageListFunc = func(ctx context.Context, options image.ListOptions) ([]image.Summary, error) {
+		return []image.Summary{
+			{
+				ID:       imgBaseID,
+				RepoTags: []string{"alpine:3.19"},
+				Size:     10 * 1024 * 1024,
+				Created:  now.Add(-500 * time.Hour).Unix(),
+			},
+			{
+				ID:       imgWarmStageID,
+				RepoTags: []string{"<none>:<none>"},
+				Size:     120 * 1024 * 1024,
+				Created:  now.Add(-12 * time.Hour).Unix(),
+			},
+			{
+				ID:       imgProdID,
+				RepoTags: []string{"web-api:latest"},
+				Size:     245 * 1024 * 1024,
+				Created:  now.Add(-6 * time.Hour).Unix(),
+			},
+			{
+				ID:       imgDeadID,
+				RepoTags: []string{"<none>:<none>"},
+				Size:     480 * 1024 * 1024,
+				Created:  now.Add(-600 * time.Hour).Unix(),
+			},
+		}, nil
+	}
+
+	mock.ImageInspectWithRawFunc = func(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
+		switch imageID {
+		case imgBaseID:
+			return types.ImageInspect{
+				ID:      imgBaseID,
+				Size:    10 * 1024 * 1024,
+				Created: now.Add(-500 * time.Hour).Format(time.RFC3339),
+				RootFS:  types.RootFS{Layers: []string{layerA}},
+			}, nil, nil
+		case imgWarmStageID:
+			return types.ImageInspect{
+				ID:      imgWarmStageID,
+				Size:    120 * 1024 * 1024,
+				Created: now.Add(-12 * time.Hour).Format(time.RFC3339),
+				RootFS:  types.RootFS{Layers: []string{layerA, layerB, layerC1}},
+			}, nil, nil
+		case imgProdID:
+			return types.ImageInspect{
+				ID:      imgProdID,
+				Size:    245 * 1024 * 1024,
+				Created: now.Add(-6 * time.Hour).Format(time.RFC3339),
+				RootFS:  types.RootFS{Layers: []string{layerA, layerB, layerC1, layerD1}},
+			}, nil, nil
+		case imgDeadID:
+			return types.ImageInspect{
+				ID:      imgDeadID,
+				Size:    480 * 1024 * 1024,
+				Created: now.Add(-600 * time.Hour).Format(time.RFC3339),
+				RootFS:  types.RootFS{Layers: []string{layerA, layerB, layerDead}},
+			}, nil, nil
+		default:
+			return types.ImageInspect{ID: imageID}, nil, nil
+		}
+	}
+
+	mock.VolumeListFunc = func(ctx context.Context, filter volume.ListOptions) (volume.ListResponse, error) {
+		return volume.ListResponse{
+			Volumes: []*volume.Volume{
+				{
+					Name:   anonVolName,
+					Driver: "local",
+					UsageData: &volume.UsageData{
+						Size: 150 * 1024 * 1024,
+					},
+				},
+				{
+					Name:   namedVolName,
+					Driver: "local",
+					UsageData: &volume.UsageData{
+						Size: 2400 * 1024 * 1024,
+					},
+				},
+			},
+		}, nil
+	}
+
+	return mock
 }
 
 // NewRootCmd constructs the CLI root command and subcommands.

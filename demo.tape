@@ -6,7 +6,6 @@ Output assets/demo.gif
 Set FontSize 14
 Set Width 1200
 Set Height 600
-Set Padding 20
 Set Theme "Catppuccin Mocha"
 
 # Step 1: Analyze Docker Layers
@@ -26,9 +25,9 @@ Type "d"
 Sleep 1s
 
 # Step 4: Navigate Tabs
-Type @500ms "	"
+Tab
 Sleep 1s
-Type @500ms "	"
+Tab
 Sleep 1s
 
 # Step 5: Trigger Selective Pruning Plan
